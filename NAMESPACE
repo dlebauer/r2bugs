@@ -1,0 +1,3 @@
+export(bugs.rdist)
+export(bugs2r.distributions)
+export(r2bugs.distributions)

@@ -1,0 +1,6 @@
+\BOOKMARK [0][-]{section*.2}{A review of different parameterizations used in R and BUGS}{}
+\BOOKMARK [1][-]{section*.4}{A comparison of parameterizations}{section*.2}
+\BOOKMARK [1][-]{section*.5}{Converting from R to BUGS parameterizations}{section*.2}
+\BOOKMARK [1][-]{section*.6}{Differences in naming}{section*.2}
+\BOOKMARK [1][-]{section*.7}{Acknowlegements}{section*.2}
+\BOOKMARK [1][-]{section*.9}{Appendix: R functions r2bugs and bugs2r to convert from R to BUGS parameterizations}{section*.2}

@@ -1,0 +1,58 @@
+\documentclass[12pt]{article}
+\usepackage{Sweave}
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage[authoryear,round]{natbib}
+\bibliographystyle{plainnat}
+   
+\title{Simulation and Parameter Estimation for Biomass Crops}
+\author{David S. LeBauer, Ben Bolker}
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+\SweaveOpts{engine=R,eps=FALSE,pdf=TRUE}
+\SweaveOpts{include=FALSE}
+\setkeys{Gin}{width=\textwidth}
+\newcommand{\code}[1]{\texttt{\small{#1}}}
+
+\maketitle
+\begin{abstract}
+Demonstration of the use of the \code{r2bugs.distributions} function.
+\end{abstract}
+
+<<preliminaries,echo=FALSE,print=FALSE>>=
+library(r2bugs)
+n.iter <- 100000
+set.seed(0)
+@
+
+\section{Introduction}
+
+A simple example follows, using a normal distribution, $N(\mu = 10, \sigma = 2)$ we will compare a random sample from the R and BUGS implementation of the distribution.
+
+<<ex1,echo=TRUE>>=
+r.distn <- data.frame(distn = "norm", parama = 10, paramb = 2)
+Y.R <- do.call(paste("r", r.distn$distn, sep = ""), 
+               list(n.iter/4, r.distn$parama, r.distn$paramb))
+
+bugs.dist <- r2bugs.distributions(r.distn)
+Y.BUGS <- r2bugs::bugs.rdist(bugs.dist, n.iter = n.iter)
+@ 
+
+
+Simple tests show that the mean and variance of the two samples are similar. Indeed, this is done for five parameterizations of each of seven distributions (Normal, log-Normal, Weibull, Gamma, $\chi^2$, Binomial, and Negative-Binomial in the tests that are written for the \code{r2bugs} package. These tests and can be found in the file \code{/inst/tests/test.r2bugs.distributions.R}.
+
+Here, we can visually compare the similarity of the density of \Sexpr{format(n.iter/4)} samples from the same distribution implemented in R (black) and then JAGS (red).
+<<echo=FALSE,results=hide>>=
+pdf(file = "fig1.pdf")
+plot(density(Y.R))
+lines(density(Y.BUGS), col = 'red')
+dev.off()
+@
+
+\begin{figure}[htbp!]
+  \centering
+  \includegraphics[width=0.5\textwidth]{fig1}
+\end{figure}
+
+\end{document}
+
