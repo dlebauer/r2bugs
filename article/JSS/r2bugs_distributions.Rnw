@@ -1,0 +1,189 @@
+\documentclass[codesnippett]{jss}
+\let\code=\texttt
+%% load any required packages here
+
+
+\author{David LeBauer, Ben Bolker, and  Michael C. Dietze}
+\title{A Review of Different Parameterizations Used in \proglang{R} and \proglang{BUGS}}
+\Plainauthor{David LeBauer, Ben Bolker, and  Michael C. Dietze}
+\Plaintitle{A Review of Different Parameterizations Used in R and BUGS}
+\Address{David S. LeBauer\\
+  Department of Plant Biology\\
+  Energy Biosciences Institute\\
+  University of Illinois\\
+  USA\\
+  \email{dlebauer@illinois.edu}
+}
+
+
+\Keywords{bayesian, \proglang{R}, \proglang{BUGS}, \proglang{JAGS}}
+\Plainkeywords{bayesian, R, BUGS, JAGS}
+
+\Abstract{
+ The ability to generate models in the BUGS language simplifies the development and analysis of Bayesian models.
+ Software written in the \proglang{BUGS} language includes \pkg{OpenBUGS}, \pkg{WinBUGS}, and \pkg{JAGS}.
+ 
+ However, the \proglang{R} and \proglang{BUGS} use inconsistent representations of common probability distributions, creating the potential for error and confusion when writing conducting statistical analyses that use both languages.
+ Here we provide an overview of the different parameterizations, documentation of the transformations, and an R package \pkg{r2bugs} that implements these transformations.
+ As a demonstration of \pkg{r2bugs}, the function \code{bugs.rdist} implements random sampling functions in \proglang{JAGS} that are analogous to the \code{rdist} functions in \proglang{R} such as \code{rnorm}.
+}
+
+%% need no \usepackage{Sweave.sty}
+
+
+
+\begin{document}
+\section{Introduction}
+
+ Many software packages provide an interface to software written in the \proglang{BUGS} language, enabling users to leverage the power of \proglang{R} when pre-processing data and analyzing model output.
+
+ However, many common probability distributions have different default parameterizations in the \proglang{R} versus \proglang{BUGS} languages.
+ As part of a semi-automated meta-analysis module in the PEcAn workflow \citep{lebauer2012ffb}, we developed a function to transform parameterizations between the \proglang{R} and \proglang{BUGS} languages. 
+ Although the probability distribution functions are documented in the respective software, we are not aware of any comprehensive treatment of the different parameterizations used by \proglang{BUGS} and \proglang{R}, or a single location in which transformations between these languages are documented.
+ Here we provide an overview of distributions for which the default parameterizations used by \proglang{R} and \proglang{BUGS} are different, including the transformations required to convert from one language to another and a \proglang{R} function that encapsulates these transformations.
+
+Table \ref{tab:parameterizations} summarizes the different parameterizations used in \proglang{R} \citep{rdev2011} and \proglang{BUGS} \citep{plummer2011}.  
+
+{\tiny
+\begin{table}[h!]\label{tab:parameterizations}
+\caption{Summary of different parameterizations of common distributions used by \proglang{R} and \proglang{BUGS}. The random variable $x$ is implicit in all of the \proglang{BUGS} ``Use'' parameterizations. $^*$ non-default parameterizations in \proglang{R} - these are not used in the \code{r2bugs.distributions} function; to use these parameterizations, the second argument \emph{must} be named. For clarity and ease of reference, parameterizations follow the \pkg{JAGS} and \proglang{R} documentation; thus, the table includes some equivalent variables with different names (e.g. for Gamma,  $r$ in \proglang{BUGS} and $a$ in \proglang{R} are precisely the same), and equivalent expressions with different forms (which motivates this article).}
+\begin{center}
+\begin{tabular}{llll}
+\hline
+ Distribution       &  Language  &  Parameterization  &  Use \\
+\hline
+ Normal             &  \proglang{R}      &  $\frac{1}{\sqrt{2 \pi}\sigma}\exp(-\frac{(x - \mu)^2}{2 \sigma^2})$          &  \code{dnorm(x, $\mu$, $\sigma$)}   \\
+                    &  \proglang{BUGS}   &  $\sqrt{\frac{\tau}{2\pi}}\exp(-(x-\mu)^2\tau)$                                 & \code{dnorm($\mu$, $\tau$)}        \\
+ log-Normal         &  \proglang{R}      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp(-\frac{(log x - \mu)^2}{(2 \sigma^2)})$  &  \code{dlnorm(x, $\mu$, $\sigma$)}  \\
+                    &  \proglang{BUGS}   &  $\frac{\sqrt{\tau}}{x}\exp(\frac{-\tau(log(x)-\mu)^2}{2})$                     &  \code{dlnorm($\mu$, $\tau$)}       \\
+ Binomial           &  \proglang{R}      &  ${n \choose x} p^{x}(1-p)^{n-x}$                                               &  \code{dbinom(x, n, p)}             \\
+                    &  \proglang{BUGS}   &  same                                                                           &  \code{dbin(p, n)}                  \\
+ Negative Binomial  &  \proglang{R}      &  $\frac{\Gamma(x+n)}{\Gamma(n) x!} p^n (1-p)^x$                                 &  \code{dnbinom(x, n, p)}            \\
+                    &  \proglang{R}$^*$      &  $\frac{\Gamma(k+x)}{\Gamma(k)x!}(\frac{k}{k+\mu})^k \frac{\mu}{(k+\mu)^x}$     &  \code{dnbinom(x, n, mu = $\mu$)}$^*$        \\
+                    &  \proglang{BUGS}   &  ${x+r-1 \choose x}p^r(1-p)^x$                                                  &  \code{dnegbin(p, r)}               \\
+ Weibull            &  \proglang{R}      &  $\frac{a}{b} (\frac{x}{b})^{a-1} \exp(- (\frac{x}{b})^a)$                      &  \code{dweibull(x, a, b)}           \\
+                    &  \proglang{BUGS}   &  $\nu\lambda x^{\nu - 1}\exp(-\lambda x^{\nu})$                                 &  \code{dweib($\nu$, $\lambda$)}     \\
+ Gamma              &  \proglang{R}      &  ${\frac{r^a}{\Gamma(a)}} x^{a-1} \exp(-xr)$                                    &  \code{dgamma(x, a, r)}             \\
+                    &  \proglang{R}$^*$      &  ${\frac{1}{s^{a}\Gamma(a)}} x^{a-1} \exp(-x/s)$                                &  \code{dgamma(x, a, scale = s)}$^*$  \\
+                    &  \proglang{BUGS}   &  ${\frac{\lambda^r x^{r-1}\exp(-\lambda x)}{\Gamma(r)}}$                        &  \code{dgamma(r, $\lambda$)}        \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+}
+
+\section{Converting from R to BUGS parameterizations}
+
+  The Normal and log-normal are parameterized in terms of $\tau$ (precision) by \proglang{BUGS} and in terms of $\sigma$ (standard deviation) or $\sigma$$^2$ (variance) by \proglang{R}.
+  The Negative binomial distribution size parameter is discrete in \proglang{BUGS} (size, prob), but the size parameter is continuous in \proglang{R} (size, mu).
+  The Weibull distribution has parameters ($\nu=\textrm{shape}, \lambda= \textrm{lambda}$) in \proglang{BUGS}, in \proglang{R}, it has either (a=shape, b=scale) or (a=shape,b=rate).
+  The default parameterization of the Gamma in \proglang{R} is ($a$=shape, $r$ = rate) whereas in \proglang{BUGS} the parameterization is ($r$ = rate, $\lambda$ = shape). 
+  Thus, the order of the shape and rate parameters is reversed in \proglang{BUGS} (which uses rate, shape).
+  \proglang{R} also allows the Gamma to accept (shape, scale) but this requires that the scale argument is named (e.g. \code{dgamma(x, a, scale = b)}).
+
+  The Beta, Poisson, Exponential, and Uniform distributions have the same parameterizations in both \proglang{BUGS} and \proglang{R}.
+  A summary of these distributions is provided in table 1; the conversions required to transform parameters from \proglang{R} to \proglang{BUGS} (and \proglang{BUGS} to \proglang{R}) is provided in the table 2 and the functions \code{r2bugs} and \code{bugs2r} in the appendix.
+
+  It is also important to note that order matters, particularly in \proglang{BUGS} which doesn't have named arguments. 
+  For example, the \proglang{R} prarmeterization of the Binomial distribution, \code{dbinom(x, size, prob)}, has the same parameters but they are in reversed order in the \proglang{BUGS} distribution, \code{dbin(p,n)}.
+
+  Table~\ref{tab:transformations} summarizes transformations that can be used to convert between \proglang{R} and \proglang{BUGS} parameterizations.
+
+\begin{table}[h!]\label{tab:transformations}
+  \caption{Equations used to transform parameters from R to BUGS parameterizations}  
+  \begin{center}
+    \begin{tabular}{ll}
+\hline
+ Distribution        &  \proglang{R} to \proglang{BUGS} conversion                      \\
+\hline
+ Normal, log-Normal  &  $\tau = 1/\sigma^2$                   \\
+ Binomial            &  reverse parameter order                \\
+ Negative Binomial   &  reverse parameter order \\
+ Weibull             &  $\lambda = (1/b)^{a}$  \\
+ Gamma               &  $r = a$; $\lambda = r$ (reverse order)                           \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+ 
+In addition to different parameterizations, four distributions have different naming conventions, as listed in Table~\ref{tab:naming}.
+
+\begin{table}[h!]\label{tab:naming}
+  \caption{Differences in naming of common distributions in the R and BUGS languages}
+\begin{center}
+\begin{tabular}{lll}
+\hline
+ Distribution       &  \proglang{R}         &  \proglang{BUGS}     \\
+\hline
+ Binomial           &  \code{dbinom}    &  \code{dbin}     \\
+ Negative Binomial  &  \code{dnbinom}   &  \code{dnegbin}  \\
+ $\chi$$^2$         &  \code{dchisq}    &  \code{dchisqr}  \\
+ Weibull            &  \code{dweibull}  &  \code{dweib}    \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\section{Implementation}
+
+As a simple example, we will compare the use of \proglang{R} and \proglang{BUGS} to sample from a normal distribution, $N(\mu = 10, \sigma = 2)$
+{\scriptsize
+<<ex1,echo=TRUE,results='hide',eval=FALSE>>=
+library(r2bugs)
+n.iter <- 100000
+set.seed(0)
+## define a N(10,2) in R
+r.distn <- data.frame(distn = "norm", parama = 10, paramb = 2)
+## sample from the distribution
+Y.R <- do.call(paste("r", r.distn$distn, sep = ""), 
+               list(n.iter/4, r.distn$parama, r.distn$paramb))
+## convert R parameterization to BUGS parameterization
+bugs.dist <- r2bugs.distributions(r.distn)
+## sample from the BUGS distribution using JAGS
+Y.BUGS <- bugs.rdist(bugs.dist, n.iter = n.iter)
+@ 
+
+
+}
+
+
+\section*{Acknowledgements}
+
+This work is the result of collaboration that began on the statistical question and answer website Cross Validated (http://stats.stackexchange.com/q/5543/1381). Funding was provided to MCD and DSL by the Energy Biosciences Institute.
+
+
+\begin{thebibliography}{1}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{{\tt #1}}\fi
+
+\bibitem[R Development Core Team, 2011]{rdev2011}
+R Development Core Team (2011)
+\newblock R: A language and environment for statistical Computing.
+\newblock R Foundation for Statistical Computing, Vienna, Austria
+\newblock ISBN 3-900051-07-0
+\newblock URL \url{http://www.R-project.org/}.
+
+\bibitem[Plummer, 2011]{plummer2011}
+Plummer, Martyn (2011)
+\newblock JAGS Version 3.1.0 user manual.
+\newblock URL \url{http://sourceforge.net/projects/mcmc-jags/}.
+
+
+\bibitem[LeBauer et al., 2012]{lebauer2012ffb}
+David S. LeBauer, Dan Wang, Carl D. Davidson, Katie T. Richter and Michael C. Dietze (2012). Facilitating feedbacks between field measurements and ecosystem models. Ecological Monographs.
+
+
+\end{thebibliography}
+\newpage
+\section{Appendix}
+
+R functions \code{r2bugs} and \code{bugs2r} convert from \proglang{R} to \proglang{BUGS} parameterizations, and \code{bugs.rdist} samples from a distribution using \pkg{JAGS}.
+
+The \pkg{r2bugs} package is available from www.github.com/dlebauer/r2bugs, and can be installed using the following function:
+
+<<appendix,echo=TRUE,results='hide',eval=FALSE>>=
+library(devtools)
+install_github("r2bugs", username = "dlebauer")
+@
+\end{document}
