@@ -1,0 +1,5 @@
+\BOOKMARK [0][-]{section*.2}{Translating Probability Distributions: From R to BUGS and Back}{}% 1
+\BOOKMARK [1][-]{section*.4}{Introduction}{section*.2}% 2
+\BOOKMARK [1][-]{section*.5}{Translating R parameterizations to BUGS \(and vice-versa\)}{section*.2}% 3
+\BOOKMARK [1][-]{section*.6}{Acknowlegements}{section*.2}% 4
+\BOOKMARK [1][-]{section*.8}{Appendix: R functions r2bugs and bugs2r to translate between R and BUGS parameterizations of common probability distributions}{section*.2}% 5

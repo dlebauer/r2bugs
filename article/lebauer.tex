@@ -1,0 +1,187 @@
+
+
+\title{Translating Probability Distributions:\\ From R to BUGS and Back}
+\author{by David LeBauer, Michael C. Dietze, Ben Bolker}
+
+\maketitle
+
+\abstract{
+The ability to generate models in the BUGS language simplifies the development and analysis of Bayesian models. 
+R provides a powerful interface to software written in the BUGS language, including OpenBUGS, WinBUGS, and JAGS.
+
+However, the R and BUGS languages use inconsistent representations of common probability distributions, and this creates the potential for error and confusion when using both languages. 
+Here we review different parameterizations used by the R and BUGS languages, describe how to translate from between the languages, and provide two R functions \code{r2bugs} and \code{bugs2r} that transform parameterizations from R to BUGS, and back.
+}
+
+
+
+
+Many software packages provide an interface to software written in the BUGS language, enabling users to leverage the power of R when pre-processing data and analyzing model output.
+However, many common probability distributions have different default parameterizations in the R versus BUGS languages. 
+
+To support the use of informative prior distributions in meta-analysis \citep{lebauer2012ffb}, we developed functions to translate parameterizations of common probability distributions between the R and BUGS languages. 
+Although the probability distribution functions are documented in the respective software, we are not aware of any comprehensive treatment of the different parameterizations used by BUGS and R, or a single location in which transformations between these languages are documented.
+Here we provide an overview of distributions for which the default parameterizations used by R and BUGS are different, as well as R functions to translate between R and BUGS.
+
+\begin{table}
+\begin{center}
+{\tiny
+\begin{tabular}{llll}
+\hline
+ Distribution       &  Language  &  Parameterization  &  Use \\
+\hline
+ Normal             &  R      &  $\frac{1}{\sqrt{2 \pi}\sigma}\exp(-\frac{(x - \mu)^2}{2 \sigma^2})$          &  \code{dnorm(x, $\mu$, $\sigma$)}   \\
+                    &  BUGS   &  $\sqrt{\frac{\tau}{2\pi}}\exp(-(x-\mu)^2\tau)$                                 & \code{dnorm($\mu$, $\tau$)}        \\
+ log-Normal         &  R      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp(-\frac{(\textrm{log}(x) - \mu)^2}{(2 \sigma^2)})$  &  \code{dlnorm(x, $\mu$, $\sigma$)}  \\
+                    &  BUGS   &  $\frac{\sqrt{\tau}}{x}\exp(\frac{-\tau(\textrm{log}(x)-\mu)^2}{2})$                     &  \code{dlnorm($\mu$, $\tau$)}       \\
+ Binomial           &  R      &  ${n \choose x} p^{x}(1-p)^{n-x}$                                               &  \code{dbinom(x, n, p)}             \\
+                    &  BUGS   &  same                                                                           &  \code{dbin(p, n)}                  \\
+ Negative Binomial  &  R      &  $\frac{\Gamma(x+n)}{\Gamma(n) x!} p^n (1-p)^x$                                 &  \code{dnbinom(x, n, p)}            \\
+                    &  R$^*$      &  $\frac{\Gamma(k+x)}{\Gamma(k)x!}(\frac{k}{k+\mu})^k \frac{\mu}{(k+\mu)^x}$     &  \code{dnbinom(x, n, mu = $\mu$)}$^*$        \\
+                    &  BUGS   &  ${x+r-1 \choose x}p^r(1-p)^x$                                                  &  \code{dnegbin(p, r)}               \\
+ Weibull            &  R      &  $\frac{a}{b} (\frac{x}{b})^{a-1} \exp(- (\frac{x}{b})^a)$                      &  \code{dweibull(x, a, b)}           \\
+                    &  BUGS   &  $\nu\lambda x^{\nu - 1}\exp(-\lambda x^{\nu})$                                 &  \code{dweib($\nu$, $\lambda$)}     \\
+ Gamma              &  R      &  ${\frac{r^a}{\Gamma(a)}} x^{a-1} \exp(-xr)$                                    &  \code{dgamma(x, a, r)}             \\
+                    &  R$^*$      &  ${\frac{1}{s^{a}\Gamma(a)}} x^{a-1} \exp(-x/s)$                                &  \code{dgamma(x, a, scale = s)}$^*$  \\
+                    &  BUGS   &  ${\frac{\lambda^r x^{r-1}\exp(-\lambda x)}{\Gamma(r)}}$                        &  \code{dgamma(r, $\lambda$)}        \\
+\hline
+\end{tabular}
+}
+\end{center}
+\caption{ Summary of different parameterizations of common distributions used by R and BUGS. The random variable $x$ is implicit in all of the BUGS ``Use'' parameterizations. $^*$ non-default parameterizations in R - these are not used in the \code{r2bugs.distributions} function; to use these parameterizations, the second argument \emph{must} be named. For clarity and ease of reference, parameterizations follow the JAGS and R documentation; thus, the table includes some equivalent variables with different names (e.g. for Gamma,  $r$ in BUGS and $a$ in R are precisely the same), and equivalent expressions with different forms (which motivates this article).}
+\label{tab:parameterizations}
+\end{table}
+
+\section{Translating R  parameterizations to BUGS (and back again)}
+
+ Translating R paramterizations to BUGS requires three straightforward but error-prone steps.
+ The first step is to compare how each language implements the supported probability distribution, in many cases using distinct formulae. 
+  Table \ref{tab:parameterizations} summarizes the different parameterizations used in R and the JAGS implementation of BUGS \citep{plummer2011}.
+ The second step is to identify relationships between parameters, including transformations and the order of arguments to a function (Table~\ref{tab:transformations}).
+ The conversions required to transform parameters from R to BUGS (and BUGS to R) are provided in Table~\ref{tab:transformations}.
+ Finally, differences in function names must be addressed (Table~\ref{tab:naming}).
+
+  The \strong{Normal} and \strong{log-normal} distributions use standard deviation ($\sigma$) in R and precision ($\tau=1/\sigma^2$) in BUGS; mean $\mu$ is the first argument in both languages.
+  The \strong{Negative binomial} distribution uses a continuous size parameter ($n$) in R and a discrete size parameter ($r$) in BUGS; both languages use a probability parameter ($p$) by default, but the order of parameters is reversed. 
+  The R functions \code{*nbinom} can also use $\mu$ (where $p=n/(n+\mu)$).
+  The \strong{Weibull} distribution has shape ($a$) and scale ($b$) parameters in R, but has shape ($\nu$) and lambda ($\lambda$, where $\lambda=1/b$) in BUGS.
+  The default parameterization of the \strong{Gamma} in R uses shape ($a$) and rate ($r$) whereas BUGS reverses and renames these parameters: rate ($r$) and shape ($\lambda$).
+  R also allows the Gamma to accept shape and scale parameters, if the scale argument is explicitly named (e.g. \code{dgamma(x, a, scale = b)}).
+  The \strong{Beta}, \strong{Poisson}, \strong{Exponential}, and \strong{Uniform} distributions have the same parameterizations in both BUGS and R.
+
+  The order of parameters matters, since argument names are not used in BUGS and are optional in R.
+  This is especially important because the order of parameters for the \strong{Binomial} and \strong{Negative Binomial} distributions are switched when translating between BUGS and R (Tables~\ref{tab:parameterizations},\ref{tab:transformations}).
+  Alternative parameterizations of the \strong{Gamma} and \strong{Negative Binomial} distributions are provided in R, but their use requires that the parameters be given as named arguments.
+
+ All of these considerations are integrated into the R functions \code{r2bugs} and \code{bugs2r} that translate the parameterization of common probability distributions between the R and BUGS languages (see Appendix).
+
+\begin{table}
+{\scriptsize
+\begin{tabular}{ll}
+\hline
+ Distribution        &  R to BUGS conversion                      \\
+\hline
+ Normal, log-Normal  &  $\tau = 1/\sigma^2$                   \\
+ Binomial            &  reverse parameter order                \\
+ Negative Binomial   &  reverse parameter order \\
+ Weibull             &  $\lambda = (1/b)^{a}$  \\
+ Gamma               &  $r = a$; $\lambda = r$ (reverse order)                           \\
+\hline
+\end{tabular}
+}
+\caption{scriptsize Transformations required to convert from R to BUGS parameterizations}
+\label{tab:transformations}
+\end{table}
+
+In addition to different parameterizations, four distributions have different naming conventions (Table~\ref{tab:naming}).
+
+\begin{table}
+{\scriptsize
+\begin{tabular}{lll}
+\hline
+ Distribution       &  R         &  BUGS     \\
+\hline
+ Binomial           &  \code{dbinom}    &  \code{dbin}     \\
+ Negative Binomial  &  \code{dnbinom}   &  \code{dnegbin}  \\
+ $\chi$$^2$         &  \code{dchisq}    &  \code{dchisqr}  \\
+ Weibull            &  \code{dweibull}  &  \code{dweib}    \\
+\hline
+\end{tabular}
+}
+\caption{Distributions with different naming conventions}
+\label{tab:naming}
+\end{table}
+
+\section{Acknowlegements}
+
+This collaboration began on the statistical question and answer website Cross Validated (http://stats.stackexchange.com/q/5543/1381). Funding was provided to DSL by the Energy Biosciences Institute.
+
+\bibliography{lebauer}
+
+\newpage
+\address{David S. LeBauer\\
+  Department of Plant Biology\\
+  Energy Biosciences Institute\\
+  University of Illinois, USA}\\
+\email{dlebauer@illinois.edu}
+
+\address{Michael C. Dietze\\
+  Department of Earth And Environment\\
+  Boston University, USA}
+
+\address{Ben M. Bolker\\
+  Department of Mathematics and Statistics\\
+  McMaster University, Canada}
+
+
+\section{Appendix: R functions r2bugs and bugs2r to translate between R and BUGS parameterizations of common probability distributions}
+
+\begin{example}
+r2bugs <- function(distribution, 
+                   parama, 
+                   paramb, 
+                   direction = "r2bugs") {
+
+  norm   <- distn %in% 'norm'
+  lnorm  <- distn %in% 'lnorm'
+  weib   <- distn %in% 'weibull'
+  bin    <- pdistn %in% 'binom'
+
+  ## Convert sd to precision for norm & lnorm
+  paramb[norm | lnorm] <-  
+                      1/paramb[norm | lnorm]^2
+  if(direction == "r2bugs"){
+    ## Convert R parameter b to JAGS
+    ##   parameter lambda by l = (1/b)^a
+    paramb[weib] <-   
+                 1 / paramb[weib]^parama[weib]
+  } else if (direction == "bugs2r") {
+    paramb[weib] <- 
+                 exp(-paramb[weib] / parama[weib])
+  } 
+  ## Reverse parameter order for binomial
+  bin.a <- parama[bin]
+  bin.b <- paramb[bin]
+  parama[bin] <- bin.b[bin]
+  paramb[bin] <- bin.a[bin]
+
+  ## Translate distribution names
+  rnames   <- c("weibull", "binom", "nbinom")
+  bugnames <- c("weib", "bin", "negbin")
+  if(direction == "r2bugs") {
+    from <- rnames
+    to   <- bugnames
+  } else if (direction == "bugs2r") {
+    from <- bugnames
+    to   <- rnames
+  }
+                      
+  distn <- gsub(to, from, distn)
+  return(data.frame(distn = distn, 
+                    parama = parama, 
+                    paramb=paramb))
+}
+bugs2r <- function(..., direction = "bugs2r"){
+  return(r2bugs(..., direction))
+}
+\end{example}
