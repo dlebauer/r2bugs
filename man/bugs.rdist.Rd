@@ -1,6 +1,6 @@
 \name{bugs.rdist}
 \alias{bugs.rdist}
-\title{ample from an R distribution using JAGS}
+\title{Sample from an R distribution using JAGS}
 \usage{
   bugs.rdist(prior = data.frame(distn = "norm", parama = 0, paramb = 1),
     n.iter = 1e+05, n = NULL)
