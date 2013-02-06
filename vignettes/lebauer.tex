@@ -1,5 +1,4 @@
 
-
 \title{Translating Probability Distributions:\\ From R to BUGS and Back Again}
 \author{by David S. LeBauer, Michael C. Dietze, Ben M. Bolker}
 
@@ -10,7 +9,7 @@ The ability to generate models in the BUGS language simplifies the development a
 R provides a powerful interface to software written in the BUGS language, including OpenBUGS, WinBUGS, and JAGS.
 
 However, the R and BUGS languages use inconsistent representations of common probability distributions, and this creates the potential for error and confusion when using both languages. 
-Here we review different parameterizations used by the R and BUGS languages, describe how to translate from between the languages, and provide two R functions \code{r2bugs} and \code{bugs2r} that transform parameterizations from R to BUGS, and back.
+Here we review different parameterizations used by the R and BUGS languages, describe how to translate from between the languages, and provide two R functions \code{r2bugs.distributions} and \code{bugs2r.distributions} that transform parameterizations from R to BUGS, and back.
 }
 
 
@@ -73,7 +72,7 @@ Here we provide an overview of distributions for which the default parameterizat
   This is especially important because the order of parameters for the \strong{Binomial} and \strong{Negative Binomial} distributions are switched when translating between BUGS and R (Tables~\ref{tab:parameterizations},\ref{tab:transformations}).
   Alternative parameterizations of the \strong{Gamma} and \strong{Negative Binomial} distributions are provided in R, but their use requires that the parameters be given as named arguments.
 
- All of these considerations are integrated into the R functions \code{r2bugs} and \code{bugs2r} that translate the parameterization of common probability distributions between the R and BUGS languages (see Appendix).
+ All of these considerations are integrated into the R functions \code{r2bugs.distributions} and \code{bugs2r.distributions} that translate the parameterization of common probability distributions between the R and BUGS languages (see Appendix).
 
 \begin{table}
 {\scriptsize
@@ -137,51 +136,70 @@ This collaboration began on the statistical question and answer website Cross Va
 \section{Appendix: R functions r2bugs and bugs2r to translate between R and BUGS parameterizations of common probability distributions}
 
 \begin{example}
-r2bugs <- function(distribution, 
-                   parama, 
-                   paramb, 
-                   direction = "r2bugs") {
+r2bugs.distributions <- function(priors, direction = 'r2bugs') {
 
-  norm   <- distn %in% 'norm'
-  lnorm  <- distn %in% 'lnorm'
-  weib   <- distn %in% 'weibull'
-  bin    <- pdistn %in% 'binom'
+  priors$distn  <- as.character(priors$distn)
+  priors$parama <- as.numeric(priors$parama)
+  priors$paramb <- as.numeric(priors$paramb)
 
-  ## Convert sd to precision for norm & lnorm
-  paramb[norm | lnorm] <-  
-                      1/paramb[norm | lnorm]^2
-  if(direction == "r2bugs"){
-    ## Convert R parameter b to JAGS
-    ##   parameter lambda by l = (1/b)^a
-    paramb[weib] <-   
-                 1 / paramb[weib]^parama[weib]
-  } else if (direction == "bugs2r") {
-    paramb[weib] <- 
-                 exp(-paramb[weib] / parama[weib])
-  } 
-  ## Reverse parameter order for binomial
-  bin.a <- parama[bin]
-  bin.b <- paramb[bin]
-  parama[bin] <- bin.b[bin]
-  paramb[bin] <- bin.a[bin]
+  ## index dataframe according to distribution
+  norm   <- priors$distn %in% c('norm', 'lnorm')    # these have same tramsform
+  weib   <- grepl("weib", priors$distn)             # matches r and bugs version
+  gamma  <- priors$distn == 'gamma'
+  chsq   <- grepl("chisq", priors$distn)            # matches r and bugs version
+  bin    <- priors$distn %in% c('binom', 'bin')     # matches r and bugs version
+  nbin   <- priors$distn %in% c('nbinom', 'negbin') # matches r and bugs version
 
-  ## Translate distribution names
-  rnames   <- c("weibull", "binom", "nbinom")
-  bugnames <- c("weib", "bin", "negbin")
-  if(direction == "r2bugs") {
-    from <- rnames
-    to   <- bugnames
-  } else if (direction == "bugs2r") {
-    from <- bugnames
-    to   <- rnames
+  ## Check that no rows are categorized into two distributions
+  if(max(rowSums(cbind(norm, weib, gamma, chsq, bin, nbin))) > 1) {
+    badrow <- rowSums(cbind(norm, weib, gamma, chsq, bin, nbin)) > 1
+    stop(paste(unique(priors$distn[badrow])),
+         "are identified as > 1 distribution")
   }
-                      
-  distn <- gsub(to, from, distn)
-  return(data.frame(distn = distn, 
-                    parama = parama, 
-                    paramb=paramb))
+
+  exponent <- ifelse(direction == "r2bugs", -2, -0.5) 
+  ## Convert sd to precision for norm & lnorm
+  priors$paramb[norm] <-  priors$paramb[norm] ^ exponent
+  if(direction == 'r2bugs'){
+    ## Convert R parameter b to BUGS parameter lambda by l = (1/b)^a
+    priors$paramb[weib] <-   (1 / priors$paramb[weib]) ^ priors$parama[weib]
+  } else if (direction == 'bugs2r') {
+    ## Convert BUGS parameter lambda to BUGS parameter b by b = l^(-1/a)
+    priors$paramb[weib] <-  priors$paramb[weib] ^ (- 1 / priors$parama[weib] )
+ 
+  }
+  ## Reverse parameter order for binomial and negative binomial
+  priors[bin | nbin, c('parama', 'paramb')] <-  priors[bin | nbin, c('paramb', 'parama')]
+  
+  ## Translate distribution names
+  if(direction == "r2bugs"){
+    priors$distn[weib] <- "weib"
+    priors$distn[chsq] <- "chisqr"
+    priors$distn[bin]  <- "bin"
+    priors$distn[nbin] <- "negbin"
+  } else if(direction == "bugs2r"){
+    priors$distn[weib] <- "weibull"
+    priors$distn[chsq] <- "chisq"
+    priors$distn[bin]  <- "binom"
+    priors$distn[nbin] <- "nbinom"
+  }
+  return(priors)
 }
-bugs2r <- function(..., direction = "bugs2r"){
-  return(r2bugs(..., direction))
+
+##' convert BUGS parameterizations to R paramaterizations
+##' 
+##' bugs2r.distributions is the inverse of r2bugs.distributions
+##' @title convert BUGS parameterizations to R paramaterizations
+##' @param priors data.frame with columns distn = distribution name, parama, paramb using BUGS default parameterizations
+##' @return priors dataframe using R default parameterizations
+##' @author David LeBauer, Ben Bolker
+##' @export
+##' @examples
+##' priors <- data.frame(distn = c('weibull', 'lnorm', 'norm', 'gamma'),
+##'                      parama = c(1, 1, 1, 1),
+##'                      paramb = c(2, 2, 2, 2))
+##' bugs2r.distributions(priors)
+bugs2r.distributions <- function(..., direction = "bugs2r") {
+  return(r2bugs.distributions(..., direction))
 }
 \end{example}
