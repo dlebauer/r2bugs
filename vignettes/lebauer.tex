@@ -1,4 +1,3 @@
-
 \title{Translating Probability Distributions:\\ From R to BUGS and Back Again}
 \author{by David S. LeBauer, Michael C. Dietze, Ben M. Bolker}
 
@@ -135,41 +134,45 @@ This collaboration began on the statistical question and answer website Cross Va
 
 \section{Appendix: R functions r2bugs and bugs2r to translate between R and BUGS parameterizations of common probability distributions}
 
-\begin{example}
-r2bugs.distributions <- function(priors, direction = 'r2bugs') {
+\begin{smallexample}
+r2bugs.distributions <- 
+  function(priors, direction = 'r2bugs') {
 
   priors$distn  <- as.character(priors$distn)
   priors$parama <- as.numeric(priors$parama)
   priors$paramb <- as.numeric(priors$paramb)
 
   ## index dataframe according to distribution
-  norm   <- priors$distn %in% c('norm', 'lnorm')    # these have same tramsform
-  weib   <- grepl("weib", priors$distn)             # matches r and bugs version
-  gamma  <- priors$distn == 'gamma'
-  chsq   <- grepl("chisq", priors$distn)            # matches r and bugs version
-  bin    <- priors$distn %in% c('binom', 'bin')     # matches r and bugs version
-  nbin   <- priors$distn %in% c('nbinom', 'negbin') # matches r and bugs version
+  
+  ## norm, lnorm use the same transformation
+  norm   <- priors$distn %in% c('norm', 'lnorm')    
 
-  ## Check that no rows are categorized into two distributions
-  if(max(rowSums(cbind(norm, weib, gamma, chsq, bin, nbin))) > 1) {
-    badrow <- rowSums(cbind(norm, weib, gamma, chsq, bin, nbin)) > 1
-    stop(paste(unique(priors$distn[badrow])),
-         "are identified as > 1 distribution")
-  }
+  ## the following match both R and BUGS names
+  weib   <- grepl("weib", priors$distn)               
+  gamma  <- priors$distn == 'gamma'
+  chsq   <- grepl("chisq", priors$distn)            
+  bin    <- priors$distn %in% c('binom', 'bin')     
+  nbin   <- priors$distn %in% c('nbinom', 'negbin')
 
   exponent <- ifelse(direction == "r2bugs", -2, -0.5) 
   ## Convert sd to precision for norm & lnorm
   priors$paramb[norm] <-  priors$paramb[norm] ^ exponent
   if(direction == 'r2bugs'){
-    ## Convert R parameter b to BUGS parameter lambda by l = (1/b)^a
-    priors$paramb[weib] <-   (1 / priors$paramb[weib]) ^ priors$parama[weib]
+    ## Convert R parameter b to 
+    ## BUGS parameter lambda by l = (1/b)^a
+    priors$paramb[weib] <-
+      (1 / priors$paramb[weib]) ^ priors$parama[weib]
   } else if (direction == 'bugs2r') {
-    ## Convert BUGS parameter lambda to BUGS parameter b by b = l^(-1/a)
-    priors$paramb[weib] <-  priors$paramb[weib] ^ (- 1 / priors$parama[weib] )
+    ## Convert BUGS parameter lambda 
+    ## to BUGS parameter b by b = l^(-1/a)
+    priors$paramb[weib] <-  
+      priors$paramb[weib] ^ (- 1 / priors$parama[weib])
  
   }
-  ## Reverse parameter order for binomial and negative binomial
-  priors[bin | nbin, c('parama', 'paramb')] <-  priors[bin | nbin, c('paramb', 'parama')]
+  ## Reverse parameter order 
+  ## for binomial and negative binomial
+  priors[bin | nbin, c('parama', 'paramb')] <-  
+    priors[bin | nbin, c('paramb', 'parama')]
   
   ## Translate distribution names
   if(direction == "r2bugs"){
@@ -186,20 +189,8 @@ r2bugs.distributions <- function(priors, direction = 'r2bugs') {
   return(priors)
 }
 
-##' convert BUGS parameterizations to R paramaterizations
-##' 
-##' bugs2r.distributions is the inverse of r2bugs.distributions
-##' @title convert BUGS parameterizations to R paramaterizations
-##' @param priors data.frame with columns distn = distribution name, parama, paramb using BUGS default parameterizations
-##' @return priors dataframe using R default parameterizations
-##' @author David LeBauer, Ben Bolker
-##' @export
-##' @examples
-##' priors <- data.frame(distn = c('weibull', 'lnorm', 'norm', 'gamma'),
-##'                      parama = c(1, 1, 1, 1),
-##'                      paramb = c(2, 2, 2, 2))
-##' bugs2r.distributions(priors)
-bugs2r.distributions <- function(..., direction = "bugs2r") {
-  return(r2bugs.distributions(..., direction))
+bugs2r.distributions <- 
+  function(..., direction = "bugs2r") {
+    return(r2bugs.distributions(..., direction))
 }
-\end{example}
+\end{smallexample}
