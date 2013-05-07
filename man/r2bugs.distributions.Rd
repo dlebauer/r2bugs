@@ -8,6 +8,11 @@
   \item{priors}{data.frame with columns distn =
   distribution name, parama, paramb using R default
   parameterizations}
+
+  \item{direction,}{one of 'r2bugs' (default), 'bugs2r'.
+  Determines if function should convert from R to BUGS, or
+  vice-versa. The \code{\link{bugs2r.distributions}} does
+  the reverse.}
 }
 \value{
   priors dataframe using JAGS default parameterizations

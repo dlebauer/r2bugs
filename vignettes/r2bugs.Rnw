@@ -13,7 +13,7 @@
 \SweaveOpts{include=FALSE}
 \setkeys{Gin}{width=\textwidth}
 \newcommand{\code}[1]{\texttt{\small{#1}}}
-
+%\VignetteIndexEntry{Lubridate}
 \maketitle
 \begin{abstract}
 Demonstration of the use of the \code{r2bugs.distributions} function.

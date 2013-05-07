@@ -11,7 +11,7 @@ Depends:
     rjags,
 Suggests:
     testthat
-License: FreeBSD + file LICENSE
+License: FreeBSD
 Copyright: Authors
 LazyLoad: yes
 LazyData: FALSE

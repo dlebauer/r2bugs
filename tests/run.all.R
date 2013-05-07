@@ -7,6 +7,5 @@
 # http://opensource.ncsa.illinois.edu/license.html
 #-------------------------------------------------------------------------------
 library(testthat)
-library(PEcAn.utils)
 
-test_package("PEcAn.utils")
+test_package("r2bugs")

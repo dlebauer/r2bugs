@@ -12,6 +12,7 @@
 ##' R and BUGS have different parameterizations for some distributions. This function transforms the distributions from R defaults to BUGS defaults. BUGS is an implementation of the BUGS language, and these transformations are expected to work for bugs.
 ##' @title convert R parameterizations to BUGS paramaterizations
 ##' @param priors data.frame with columns distn = distribution name, parama, paramb using R default parameterizations
+##' @param direction, one of 'r2bugs' (default), 'bugs2r'. Determines if function should convert from R to BUGS, or vice-versa. The \code{\link{bugs2r.distributions}} does the reverse.
 ##' @return priors dataframe using JAGS default parameterizations
 ##' @author David LeBauer, Ben Bolker
 ##' @export
@@ -72,9 +73,10 @@ r2bugs.distributions <- function(priors, direction = 'r2bugs') {
 
 ##' convert BUGS parameterizations to R paramaterizations
 ##' 
-##' bugs2r.distributions is the inverse of r2bugs.distributions
+##' \code{\link{bugs2r.distributions}} is the inverse of the \code{\link{r2bugs.distributions}}. The only difference in these functions is the defalut value of the \code{direction} parameter.
 ##' @title convert BUGS parameterizations to R paramaterizations
-##' @param priors data.frame with columns distn = distribution name, parama, paramb using BUGS default parameterizations
+##' @param ... values passed to \code{\link{r2bugs.distributions}}, currently a data.frame called \code{priors} with columns distn = distribution name, parama, paramb using BUGS default parameterizations (see example)
+##' @param direction, one of 'bugs2r' (default) or 'r2bugs'. Determines if function should convert from BUGS to R, or vice-versa. The \code{\link{r2bugs.distributions}} does the reverse.
 ##' @return priors dataframe using R default parameterizations
 ##' @author David LeBauer, Ben Bolker
 ##' @export
