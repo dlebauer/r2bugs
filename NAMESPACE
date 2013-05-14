@@ -1,3 +1,4 @@
-export(bugs.rdist)
 export(bugs2r.distributions)
 export(r2bugs.distributions)
+export(sample.dist.BUGS)
+export(sample.dist.R)

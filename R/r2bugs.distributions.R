@@ -102,7 +102,7 @@ bugs2r.distributions <- function(..., direction = "bugs2r") {
 ##' @return vector of samples
 ##' @export
 ##' @author David LeBauer
-bugs.rdist <- function(prior = data.frame(
+sample.dist.BUGS <- function(prior = data.frame(
                          distn = "norm",
                          parama = 0,
                          paramb = 1),
@@ -122,13 +122,26 @@ bugs.rdist <- function(prior = data.frame(
   j.model  <- jags.model(file = "test.bug", data = list(x = 1))
   mcmc.object <- window(coda.samples(model = j.model,
                               variable.names = c('Y'),
-                              n.iter = n.iter,
+                              n.iter = n.iter*4,
                               thin = 2),
                         start = n.iter / 2)
   Y <- as.matrix(mcmc.object)[,"Y"]
-  if(!is.null(n)){
-    Y <- sample(Y, n)
+  if(is.null(n)){
+    n <- n.iter
   }
+  Y <- sample(Y, n)
   return(Y)
 }
 
+##' Take n random samples from prior
+##'
+##' @title Sample from a probability distirbution using R
+##' @param prior data.frame with distn, parama, paramb
+##' @param n number of samples to return
+##' @return vector with n random samples from prior
+##' @seealso \link{pr.samp}
+##' @export
+#--------------------------------------------------------------------------------------------------#
+sample.dist.R <- function(prior, n) {
+  do.call(paste('r', prior$distn, sep=""), list(n, prior$parama, prior$paramb))
+}
