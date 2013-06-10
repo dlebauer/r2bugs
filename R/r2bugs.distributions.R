@@ -21,6 +21,8 @@
 ##'                      parama = c(1, 1, 1, 1),
 ##'                      paramb = c(2, 2, 2, 2))
 ##' r2bugs.distributions(priors)
+##' 
+
 r2bugs.distributions <- function(priors, direction = 'r2bugs') {
 
   priors$distn  <- as.character(priors$distn)
@@ -109,15 +111,11 @@ sample.dist.BUGS <- function(prior = data.frame(
                        n.iter = 100000,
                        n = NULL) {
   require(rjags)
-  if(!grepl("chisq", prior$distn)){
-    model.string <- paste("model{Y ~ d", prior$distn, "(",
-                          prior$parama, ", ", prior$paramb,
-                          ")\n a <- x}", sep = "")
-  } else if(grepl("chisq", prior$distn)) {
-    model.string <- paste("model{Y ~ d", prior$distn, "(",
-                          prior$parama,
-                          ")\n a <- x}", sep = "")
-  }
+  model.string <- paste0("model{Y ~ d", prior$distn, "(",
+                         prior$parama, 
+                         ifelse(prior$distn == "chisq", "", paste0(", ", prior$paramb)),
+                         ")\n a <- x}")
+  
   writeLines(model.string, con = "test.bug")
   j.model  <- jags.model(file = "test.bug", data = list(x = 1))
   mcmc.object <- window(coda.samples(model = j.model,
