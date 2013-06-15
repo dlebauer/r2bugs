@@ -10,48 +10,57 @@ Software packages that interpret the BUGS language include OpenBUGS, WinBUGS, an
 R packages that link BUGS software to the R environment, including \CRANpkg{rjags} and \CRANpkg{R2WinBUGS}, are widely used in Bayesian analysis. 
 Indeed, many packages in the Bayesian task view on CRAN (\url{http://cran.r-project.org/web/views/Bayesian.html}) depend on this integration. 
 
-However, the R and BUGS languages use different representations of common probability distributions,  creating a potential for errors to occur in the implementation or interpretation of analyses that use both languages.
+However, the R and BUGS languages use different representations of common probability density functions,  creating a potential for errors to occur in the implementation or interpretation of analyses that use both languages.
 Here we review different parameterizations used by the R and BUGS languages, describe how to translate between the languages, and provide an R function, \code{r2bugs.distributions}, that transforms parameterizations from R to BUGS and back again.
 }
 
 \begin{widetable}[ht!]
 %\begin{center}
-\caption{\small{ Summary of different parameterizations of common
+\caption{
+%\small{ 
+Summary of different parameterizations of common
 distributions used by R and BUGS. 
-The variable $x$ is implicit in all of the BUGS ``Use'' expressions. For ease of reference, parameterizations follow the JAGS and R documentation;
-as a result, the table includes equivalent equations that appear different, either because JAGS and R use different names for the same parameter or because the equation has been rearranged. For example, the shape parameter of the \emph{Gamma} distribution is $r$ in the BUGS documentation and $a$ in the R documentation.
-For the \emph{Binomial} and \emph{Negative Binomial} distributions, BUGS and R expect parameters in different order (the order of parameters matters since arguments are assigned based on position in BUGS and may be in R as well).
-R allows alternate parameterizations for the \emph{Negative Binomial} and \emph{Gamma} distributions, but these are not shown here. 
-The \emph{Beta}, \emph{Poisson}, \emph{Exponential}, and \emph{Uniform} distributions have identical parameterizations in R and BUGS.}}
+%}
+}
 {\small
 \begin{tabular}{llllll}
 \toprule
 Distribution       &  Language  &  Parameterization  &  Use &  Notes \\
 \midrule
 Normal&&&&\\
-&  R      &  $\frac{1}{\sqrt{2 \pi}\sigma}\exp(-\frac{(x - \mu)^2}{2 \sigma^2})$ & \code{dnorm(x, mean = $\mu$, sd = $\sigma$)}& \\
-&  BUGS   &  $\sqrt{\frac{\tau}{2\pi}}\exp(-(x-\mu)^2\tau)$ & \code{dnorm(mean = $\mu$, precision = $\tau$)} & $\tau=1/\sigma^2$  \\
+&  R      &  $\frac{1}{\sqrt{2 \pi}\sigma}\exp\left(-\frac{\left(x - \mu\right)^2}{2 \sigma^2}\right)$ & \code{dnorm($x$, mean = $\mu$, sd = $\sigma$)}& \\
+&  BUGS   &  $\sqrt{\frac{\tau}{2\pi}}\exp\left(-\left(x-\mu\right)^2\tau\right)$ & \code{dnorm(mean = $\mu$, precision = $\tau$)} & $\tau=\left(\frac{1}{\sigma}\right)^2$  \\
+\midrule
 log-Normal&&&&\\
-&  R      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp(-\frac{(\textrm{log}(x) - \mu)^2}{(2 \sigma^2)})$  &  \code{dlnorm(x, mean = $\mu$, sd = $\sigma$)}  & \\
-&  BUGS   &  $\frac{\sqrt{\tau}}{x}\exp(\frac{-\tau(\textrm{log}(x)-\mu)^2}{2})$                     &  \code{dlnorm(mean = $\mu$, precision = $\tau$)} & $\tau=1/\sigma^2$\\
+&  R      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp\left(-\frac{\left(\textrm{log}\left(x\right) - \mu\right)^2}{\left(2 \sigma^2\right)}\right)$  &  \code{dlnorm($x$, mean = $\mu$, sd = $\sigma$)}  & \\
+&  BUGS   &  $\frac{\sqrt{\tau}}{x}\exp\left(\frac{-\tau\left(\textrm{log}\left(x\right)-\mu\right)^2}{2}\right)$                     &  \code{dlnorm(mean = $\mu$, precision = $\tau$)} & $\tau=\left(\frac{1}{\sigma}\right)^2$\\
+\midrule
 Binomial&&&&  reverse parameter order\\
-&  R      &  ${n \choose x} p^{x}(1-p)^{n-x}$                                               &  \code{dbinom(x, size = $n$, prob = $p$)}  &  \\
+&  R      &  ${n \choose x} p^{x}\left(1-p\right)^{n-x}$                                               &  \code{dbinom($x$, size = $n$, prob = $p$)}  &  \\
 &  BUGS   &  same   &  \code{dbin(prob = $p$, size = $n$)} & \\
-%
+\midrule
 Negative Binomial&&&&reverse parameter order\\
-&  R      &  $\frac{\Gamma(x+n)}{\Gamma(n) x!} p^n (1-p)^x$ &  \code{dnbinom(x, size = $n$, prob = $p$)} & size (\code{n}) is continuous    &     \\
+&  R      &  $\frac{\Gamma\left(x+n\right)}{\Gamma\left(n\right) x!} p^n \left(1-p\right)^x$ &  \code{dnbinom($x$, size = $n$, prob = $p$)} & size (\code{n}) is continuous    &     \\
 %&  R$^*$      &  $\frac{\Gamma(k+x)}{\Gamma(k)x!}(\frac{k}{k+\mu})^k \frac{\mu}{(k+\mu)^x}$     &  \code{dnbinom(x, size = $n$, mu = $\mu$)} & \\%$\mu=n(1-p)/p$  \\
-&  BUGS   &  ${x+r-1 \choose x}p^r(1-p)^x$ &  \code{dnegbin(prob = $p$, size = $r$)}     & size (\code{r}) is discrete  \\ 
+&  BUGS   &  ${x+r-1 \choose x}p^r\left(1-p\right)^x$ &  \code{dnegbin(prob = $p$, size = $r$)}     & size (\code{r}) is discrete  \\ 
+\midrule
 Weibull&&&&\\
-&  R      &  $\frac{a}{b} (\frac{x}{b})^{a-1} \exp(- (\frac{x}{b})^a)$                      &  \code{dweibull(x, shape = a, scale = b)}          & \\
-&  BUGS   &  $\nu\lambda x^{\nu - 1}\exp(-\lambda x^{\nu})$  &  \code{dweib(shape = $\nu$, lambda = $\lambda$)}   & $\lambda=(1/b)^a$  \\
-%%
+&  R      &  $\frac{a}{b} (\frac{x}{b})^{a-1} \exp\left(- \left(\frac{x}{b}\right)^a\right)$                      &  \code{dweibull($x$, shape = $a$, scale = $b$)}          & \\
+&  BUGS   &  $\nu\lambda x^{\nu - 1}\exp\left(-\lambda x^{\nu}\right)$  &  \code{dweib(shape = $\nu$, lambda = $\lambda$)}   & $\lambda=\left(\frac{1}{b}\right)^a$  \\
+\midrule
 Gamma&&&&reverse parameter order \\
-&  R      &  ${\frac{r^a}{\Gamma(a)}} x^{a-1} \exp(-xr)$                                    &  \code{dgamma(x, shape = $$a, rate = $r$)} & \\
+&  R      &  ${\frac{r^a}{\Gamma(a)}} x^{a-1} \exp(-xr)$                                    &  \code{dgamma($x$, shape = $$a, rate = $r$)} & \\
 %&  R$^*$      &  ${\frac{1}{s^{a}\Gamma(a)}} x^{a-1} \exp(-x/s)$                                &  \code{dgamma(x, shape = a, scale = s)} &  \\
 &  BUGS   &  ${\frac{\lambda^r x^{r-1}\exp(-\lambda x)}{\Gamma(r)}}$                        &  \code{dgamma(shape = $r$, lambda = $\lambda$)}  &  \\
 \bottomrule
 \end{tabular}
+
+\strong{Note:} For ease of reference, parameterizations follow the JAGS and R documentation;
+as a result, the table includes equivalent equations that appear different, either because JAGS and R use different names for the same parameter or because the equation has been rearranged. For example, the shape parameter of the \emph{Gamma} distribution is $r$ in the BUGS documentation and $a$ in the R documentation.
+For the \emph{Binomial}, \emph{Negative Binomial}, and \emph{Gamma} distributions, BUGS and R expect parameters in different order (the order of parameters matters since arguments are assigned based on position in BUGS and may be in R as well).
+R allows alternate parameterizations for the \emph{Negative Binomial} and \emph{Gamma} distributions, but these are not shown here.
+The variable $x$ is implicit in all of the BUGS ``Use'' expressions.
+The \emph{Beta}, \emph{Poisson}, \emph{Exponential}, and \emph{Uniform} distributions have identical parameterizations in R and BUGS.
 }
 %\end{center}
 \label{tab:parameterizations}
@@ -120,13 +129,13 @@ r2bugs.distributions <- function(priors, direction = 'r2bugs') {
 }
 \end{example}
 
-\section{A Simple Example}
+\section{A simple example}
 
 As an example, we take the R-parameterized prior distribution $X \sim \mathcal{N}(\mu=10,\sigma=2)$ and 
 convert it to BUGS  parameterization $X \sim \mathcal{N}(\mu=10,\tau=1/4)$.
 We specify a model in JAGS that allows us to sample directly from a prior distribution.  
 The function works for each of the distributions in Table~\ref{tab:parameterizations}. 
-This particular example is the JAGS implementation of \code{rnorm(10000, 10, 2)} in R. 
+This particular example is the JAGS implementation of \samp{rnorm(10000, 10, 2)} in R. 
 It is presented as minimal demonstration;
 for a non-trivial application, see \cite{lebauer2012ffb}. 
 
@@ -161,7 +170,7 @@ This collaboration began on the Cross Validated statistical forum (\url{http://s
 
 \address{David S.\ LeBauer\\
 Energy Biosciences Institute\\
-University of Illinois
+University of Illinois\\
 USA}\\
 \email{dlebauer@illinois.edu}
 
@@ -169,10 +178,10 @@ USA}\\
 Department of Earth And Environment\\
 Boston University\\
 USA}
-%\email{dietze@bu.edu}
+%\\ \email{dietze@bu.edu}
 
 \address{Benjamin M.\ Bolker\\
 Department of Mathematics \& Statistics\\
 McMaster University\\
 Canada}
-%\email{bolker@mcmaster.ca}
+%\\ \email{bolker@mcmaster.ca}
