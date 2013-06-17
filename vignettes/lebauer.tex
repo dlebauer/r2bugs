@@ -11,46 +11,45 @@ Indeed, many packages in the Bayesian task view on CRAN (\url{http://cran.r-proj
 Here we review different parameterizations used by the R and BUGS languages, describe how to translate between the languages, and provide an R function, \code{r2bugs.distributions}, that transforms parameterizations from R to BUGS and back again.
 }
 
-\begin{widetable}[ht!]
+\begin{widetable}[ht]
 
 {\small
 
-\begin{tabular}{llllll}
+\begin{tabular}{llcll}
 \toprule
-Distribution      &  Language  &  Parameterization  &  Use &  & Notes \\
+Distribution      &  Language  &  Density  &  Use & Notes \\
 \midrule
-\multirow{2}{*}{Normal}&   R      &  $\frac{1}{\sqrt{2 \pi}\sigma}\exp\left(-\frac{\left(x - \mu\right)^2}{2 \sigma^2}\right)$ & \code{dnorm($x$, mean = $\mu$, sd = $\sigma$)}& & \\ \addlinespace
-& BUGS   &  $\sqrt{\frac{\tau}{2\pi}}\exp\left(-\left(x-\mu\right)^2\tau\right)$ & \code{dnorm(mean = $\mu$, precision = $\tau$)} && $\tau=\left(\frac{1}{\sigma}\right)^2$  \\
+\multirow{2}{*}{Normal}&   R      &  $\frac{1}{\sqrt{2 \pi}\sigma}\exp\left(-\frac{\left(x - \mu\right)^2}{2 \sigma^2}\right)$ & \code{dnorm($x$, mean = $\mu$, sd = $\sigma$)}& \\ %\addlinespace
+& BUGS   &  $\sqrt{\frac{\tau}{2\pi}}\exp\left(-\left(x-\mu\right)^2\tau\right)$ & \code{dnorm(mean = $\mu$, precision = $\tau$)} & $\tau=\left(\frac{1}{\sigma}\right)^2$  \\
 \midrule
 \multirow{2}{*}{log-Normal}
-&  R      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp\left(-\frac{\left(\textrm{log}\left(x\right) - \mu\right)^2}{\left(2 \sigma^2\right)}\right)$  &  \code{dlnorm($x$, mean = $\mu$, sd = $\sigma$)}  &&  \\  \addlinespace
-&  BUGS   &  $\frac{\sqrt{\tau}}{x}\exp\left(\frac{-\tau\left(\textrm{log}\left(x\right)-\mu\right)^2}{2}\right)$                     &  \code{dlnorm(mean = $\mu$, precision = $\tau$)} & & $\tau=\left(\frac{1}{\sigma}\right)^2$\\
+&  R      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp\left(-\frac{\left(\textrm{log}\left(x\right) - \mu\right)^2}{\left(2 \sigma^2\right)}\right)$  &  \code{dlnorm($x$, mean = $\mu$, sd = $\sigma$)}  &  \\  %\addlinespace
+&  BUGS   &  $\frac{\sqrt{\tau}}{x}\exp\left(\frac{-\tau\left(\textrm{log}\left(x\right)-\mu\right)^2}{2}\right)$                     &  \code{dlnorm(mean = $\mu$, precision = $\tau$)} & $\tau=\left(\frac{1}{\sigma}\right)^2$\\
 \midrule
 \multirow{2}{*}{Binomial} 
-&  R      &  ${n \choose x} p^{x}\left(1-p\right)^{n-x}$                                               &  \code{dbinom($x$, size = $n$, prob = $p$)}& \multirow{2}{*}{\scriptsize{$\leftrightarrow$}}  &   \\  \addlinespace
-&  BUGS   &  same   &  \code{dbin(prob = $p$, size = $n$)} & &\\
+&  R      &  ${n \choose x} p^{x}\left(1-p\right)^{n-x}$                                               &  \code{dbinom($x$, size = $n$, prob = $p$)} &   \\  %\addlinespace
+&  BUGS   &  same   &  \code{dbin(prob = $p$, size = $n$)} &\\
 \midrule
 %\multirow{2}{*}{\parbox{1.5cm}{Negative  Binomial}}& \multirow{2}{*}{$\leftrightarrow$}
 \multirow{2}{1.5cm}{Negative  Binomial}
-&  R      &  $\frac{\Gamma\left(x+n\right)}{\Gamma\left(n\right) x!} p^n \left(1-p\right)^x$ &  \code{dnbinom($x$, size = $n$, prob = $p$)} & \multirow{2}{*}{\scriptsize{$\leftrightarrow$}} & size (\code{n}) is continuous     \\ \addlinespace
+&  R      &  $\frac{\Gamma\left(x+n\right)}{\Gamma\left(n\right) x!} p^n \left(1-p\right)^x$ &  \code{dnbinom($x$, size = $n$, prob = $p$)} %& \multirow{2}{*}{\scriptsize{$\leftrightarrow$}}
+& size (\code{n}) is continuous     \\ %\addlinespace
 %&  R$^*$      &  $\frac{\Gamma(k+x)}{\Gamma(k)x!}(\frac{k}{k+\mu})^k \frac{\mu}{(k+\mu)^x}$     &  \code{dnbinom(x, size = $n$, mu = $\mu$)} & \\%$\mu=n(1-p)/p$  \\
-&  BUGS   &  ${x+r-1 \choose x}p^r\left(1-p\right)^x$ &  \code{dnegbin(prob = $p$, size = $r$)}     && size (\code{r}) is discrete  \\ 
+&  BUGS   &  ${x+r-1 \choose x}p^r\left(1-p\right)^x$ &  \code{dnegbin(prob = $p$, size = $r$)}     & size (\code{r}) is discrete  \\ 
 \midrule
 \multirow{2}{*}{Weibull}
-&  R      &  $\frac{a}{b} (\frac{x}{b})^{a-1} \exp\left(- \left(\frac{x}{b}\right)^a\right)$                      &  \code{dweibull($x$, shape = $a$, scale = $b$)}          && \\ \addlinespace
-&  BUGS   &  $\nu\lambda x^{\nu - 1}\exp\left(-\lambda x^{\nu}\right)$  &  \code{dweib(shape = $\nu$, lambda = $\lambda$)}   && $\lambda=\left(\frac{1}{b}\right)^a$  \\
+&  R      &  $\frac{a}{b} (\frac{x}{b})^{a-1} \exp\left(- \left(\frac{x}{b}\right)^a\right)$                      &  \code{dweibull($x$, shape = $a$, scale = $b$)} & \\ %\addlinespace
+&  BUGS   &  $\nu\lambda x^{\nu - 1}\exp\left(-\lambda x^{\nu}\right)$  &  \code{dweib(shape = $\nu$, lambda = $\lambda$)}   & $\lambda=\left(\frac{1}{b}\right)^a$  \\
 \midrule
 \multirow{2}{*}{Gamma}
-&  R      &  ${\frac{r^a}{\Gamma(a)}} x^{a-1} \exp(-xr)$                                    &  \code{dgamma($x$, shape = $$a, rate = $r$)} && \\ \addlinespace
+&  R      &  ${\frac{r^a}{\Gamma(a)}} x^{a-1} \exp(-xr)$                                    &  \code{dgamma($x$, shape = $$a, rate = $r$)} & \\ %\addlinespace
 %&  R$^*$      &  ${\frac{1}{s^{a}\Gamma(a)}} x^{a-1} \exp(-x/s)$                                &  \code{dgamma(x, shape = a, scale = s)} &  \\
-&  BUGS   &  ${\frac{\lambda^r x^{r-1}\exp(-\lambda x)}{\Gamma(r)}}$                        &  \code{dgamma(shape = $r$, lambda = $\lambda$)}  & & \\
+&  BUGS   &  ${\frac{\lambda^r x^{r-1}\exp(-\lambda x)}{\Gamma(r)}}$                        &  \code{dgamma(shape = $r$, lambda = $\lambda$)}  & \\
 \bottomrule
 \end{tabular}
 }
 
-\caption{Summary of different parameterizations of common
-as a result, the table includes equivalent equations that appear different, either because JAGS and R use different names for the same parameter or because the equation has been rearranged. For example, the shape parameter of the \emph{Gamma} distribution is $r$ in the BUGS documentation and $a$ in the R documentation.
-$^\leftrightarrow$ Indicates distributions for which BUGS and R expect parameters in different order; the order of parameters matters since arguments are assigned based on position in BUGS and may be in R as well.
+\caption{Summary of different parameterizations of common distributions used by R and BUGS. \emph{\textbf{Note:}} For ease of reference, parameterizations follow the JAGS and R documentation; as a result, the table includes equivalent equations that appear different, either because JAGS and R use different names for the same parameter or because the equation has been rearranged. For example, the shape parameter of the \emph{Gamma} distribution is $r$ in the BUGS documentation and $a$ in the R documentation. $^*$ BUGS and R reverse the order in which parameters of the \emph{Binomial} and \emph{Negative Binomial} distributions are specified; parameter order matters since arguments are assigned based on position in BUGS and may be in R as well.
 R allows alternate parameterizations for the \emph{Negative Binomial} and \emph{Gamma} distributions, but these are not shown here.
 The variable $x$ is implicit in all of the BUGS ``Use'' expressions.
 The \emph{Beta}, \emph{Poisson}, \emph{Exponential}, and \emph{Uniform} distributions have identical parameterizations in R and BUGS.
