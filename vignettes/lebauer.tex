@@ -1,31 +1,22 @@
 % !TeX root = RJwrapper.tex
-\title{Translating Probability Density Functions:\\ From R to BUGS and Back Again}
+\title{Translating Probability Density Functions: From R to BUGS and Back Again}
 \author{by David S.\ LeBauer, Michael C.\ Dietze, Benjamin M.\ Bolker}
 
 \maketitle
 
-\abstract{
-The ability to implement statistical models in the BUGS language facilitates Bayesian inference by automating MCMC algorithms.
+\abstract{The ability to implement statistical models in the BUGS language facilitates Bayesian inference by automating MCMC algorithms.
 Software packages that interpret the BUGS language include OpenBUGS, WinBUGS, and JAGS.
 R packages that link BUGS software to the R environment, including \CRANpkg{rjags} and \CRANpkg{R2WinBUGS}, are widely used in Bayesian analysis. 
-Indeed, many packages in the Bayesian task view on CRAN (\url{http://cran.r-project.org/web/views/Bayesian.html}) depend on this integration. 
-
-However, the R and BUGS languages use different representations of common probability density functions,  creating a potential for errors to occur in the implementation or interpretation of analyses that use both languages.
+Indeed, many packages in the Bayesian task view on CRAN (\url{http://cran.r-project.org/web/views/Bayesian.html}) depend on this integration. However, the R and BUGS languages use different representations of common probability density functions,  creating a potential for errors to occur in the implementation or interpretation of analyses that use both languages.
 Here we review different parameterizations used by the R and BUGS languages, describe how to translate between the languages, and provide an R function, \code{r2bugs.distributions}, that transforms parameterizations from R to BUGS and back again.
 }
 
 \begin{widetable}[ht!]
-%\begin{center}
-\caption{
-%\small{ 
-Summary of different parameterizations of common
-distributions used by R and BUGS. 
-%}
-}
+
 {\small
 \begin{tabular}{llllll}
 \toprule
-Distribution       &  Language  &  Parameterization  &  Use &  Notes \\
+Distribution       &  Lang.  &  Parameterization  &  Use &  Notes \\
 \midrule
 Normal&&&&\\
 &  R      &  $\frac{1}{\sqrt{2 \pi}\sigma}\exp\left(-\frac{\left(x - \mu\right)^2}{2 \sigma^2}\right)$ & \code{dnorm($x$, mean = $\mu$, sd = $\sigma$)}& \\
@@ -54,15 +45,16 @@ Gamma&&&&reverse parameter order \\
 &  BUGS   &  ${\frac{\lambda^r x^{r-1}\exp(-\lambda x)}{\Gamma(r)}}$                        &  \code{dgamma(shape = $r$, lambda = $\lambda$)}  &  \\
 \bottomrule
 \end{tabular}
+}
 
-\strong{Note:} For ease of reference, parameterizations follow the JAGS and R documentation;
+\caption{Summary of different parameterizations of common
+distributions used by R and BUGS. \strong{Note:} For ease of reference, parameterizations follow the JAGS and R documentation;
 as a result, the table includes equivalent equations that appear different, either because JAGS and R use different names for the same parameter or because the equation has been rearranged. For example, the shape parameter of the \emph{Gamma} distribution is $r$ in the BUGS documentation and $a$ in the R documentation.
 For the \emph{Binomial}, \emph{Negative Binomial}, and \emph{Gamma} distributions, BUGS and R expect parameters in different order (the order of parameters matters since arguments are assigned based on position in BUGS and may be in R as well).
 R allows alternate parameterizations for the \emph{Negative Binomial} and \emph{Gamma} distributions, but these are not shown here.
 The variable $x$ is implicit in all of the BUGS ``Use'' expressions.
 The \emph{Beta}, \emph{Poisson}, \emph{Exponential}, and \emph{Uniform} distributions have identical parameterizations in R and BUGS.
 }
-%\end{center}
 \label{tab:parameterizations}
 \end{widetable}
 
@@ -104,14 +96,15 @@ r2bugs.distributions <- function(priors, direction = 'r2bugs') {
   ## Weibull
   if(direction == 'r2bugs'){
     ## Convert R parameter b to BUGS parameter lambda by l = (1/b)^a
-    priors$paramb[weib] <-   (1 / priors$paramb[weib]) ^ priors$parama[weib]
+    priors$paramb[weib] <- (1 / priors$paramb[weib]) ^ priors$parama[weib]
   } else if (direction == 'bugs2r') {
     ## Convert BUGS parameter lambda to BUGS parameter b by b = l^(-1/a)
     priors$paramb[weib] <-  priors$paramb[weib] ^ (- 1 / priors$parama[weib] ) 
   }
   
   ## Reverse parameter order for binomial and negative binomial
-  priors[bin | nbin, c('parama', 'paramb')] <-  priors[bin | nbin, c('paramb', 'parama')]
+  priors[bin | nbin, c('parama', 'paramb')] <-
+    priors[bin | nbin, c('paramb', 'parama')]
   
   ## Translate distribution names
   if(direction == "r2bugs"){
@@ -144,18 +137,23 @@ for a non-trivial application, see \cite{lebauer2012ffb}.
 r.distn <- data.frame(distn = "norm", parama = 10, paramb = 2)
 bugs.distn <- r2bugs.distributions(r.distn)
    
-sample.bugs.distn <- function(prior = data.frame(distn = "norm", parama = 0, paramb = 1), n = 10000) {
+sample.bugs.distn <- function(prior = data.frame(distn = "norm", parama = 0, 
+                                paramb = 1), n = 10000) {
   require(rjags)
-  model.string <- paste0("model{Y ~ d", prior$distn, 
-                         "(", prior$parama, 
-                         ## chisqr has only one parameter
-                         ifelse(prior$distn == "chisqr", "", paste0(", ", prior$paramb)), 
-                         "); a <- x}")  ## trick JAGS into running without data  
+  model.string <- paste0(
+    "model{Y ~ d", prior$distn, 
+    "(", prior$parama, 
+    ## chisqr has only one parameter
+    ifelse(prior$distn == "chisqr", "", paste0(", ", prior$paramb)), ");",
+    "a <- x}"   ## trick JAGS into running without data 
+  )    
   writeLines(model.string, con = "test.bug")
   j.model  <- jags.model(file = "test.bug", data = list(x = 1))
-  mcmc.object <- window(coda.samples(model = j.model, 
-       variable.names = c('Y'), n.iter = n * 4, thin = 2),
-                        start = n)
+  mcmc.object <- window(
+    coda.samples(
+      model = j.model, variable.names = c('Y'), 
+      n.iter = n * 4, thin = 2),
+    start = n)
   Y <- sample(as.matrix(mcmc.object)[,"Y"], n)
 }
 X <- sample.bugs.distn(bugs.distn)
@@ -167,6 +165,7 @@ This collaboration began on the Cross Validated statistical forum (\url{http://s
 
 \bibliography{lebauer}
 
+\begin{multicols}{2}
 
 \address{David S.\ LeBauer\\
 Energy Biosciences Institute\\
@@ -179,9 +178,12 @@ Department of Earth And Environment\\
 Boston University\\
 USA}
 %\\ \email{dietze@bu.edu}
+\columnbreak
 
 \address{Benjamin M.\ Bolker\\
 Department of Mathematics \& Statistics\\
 McMaster University\\
 Canada}
 %\\ \email{bolker@mcmaster.ca}
+
+\end{multicols}
