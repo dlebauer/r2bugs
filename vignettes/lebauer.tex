@@ -23,19 +23,18 @@ Distribution      &  Language  &  Density  &  Use & Notes \\
 & BUGS   &  $\sqrt{\frac{\tau}{2\pi}}\exp\left(-\left(x-\mu\right)^2\tau\right)$ & \code{dnorm(mean = $\mu$, precision = $\tau$)} & $\tau=\left(\frac{1}{\sigma}\right)^2$  \\
 \midrule
 \multirow{2}{*}{log-Normal}
-&  R      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp\left(-\frac{\left(\textrm{log}\left(x\right) - \mu\right)^2}{\left(2 \sigma^2\right)}\right)$  &  \code{dlnorm($x$, mean = $\mu$, sd = $\sigma$)}  &  \\  %\addlinespace
+&  R      &  $\frac{1}{\sqrt{2 \pi} \sigma x} \exp\left(-\frac{\left(\textrm{log}\left(x\right) - \mu\right)^2}{\left(2 \sigma^2\right)}\right)$  &  \code{dlnorm($x$, mean = $\mu$, sd = $\sigma$)}  &  \\  
 &  BUGS   &  $\frac{\sqrt{\tau}}{x}\exp\left(\frac{-\tau\left(\textrm{log}\left(x\right)-\mu\right)^2}{2}\right)$                     &  \code{dlnorm(mean = $\mu$, precision = $\tau$)} & $\tau=\left(\frac{1}{\sigma}\right)^2$\\
 \midrule
 \multirow{2}{*}{Binomial} 
 &  R      &  ${n \choose x} p^{x}\left(1-p\right)^{n-x}$                                               &  \code{dbinom($x$, size = $n$, prob = $p$)} &   \\  %\addlinespace
-&  BUGS   &  same   &  \code{dbin(prob = $p$, size = $n$)} &\\
+&  BUGS   &  same   &  \code{dbin(prob = $p$, size = $n$)}$^*$ &\\
 \midrule
-%\multirow{2}{*}{\parbox{1.5cm}{Negative  Binomial}}& \multirow{2}{*}{$\leftrightarrow$}
 \multirow{2}{1.5cm}{Negative  Binomial}
 &  R      &  $\frac{\Gamma\left(x+n\right)}{\Gamma\left(n\right) x!} p^n \left(1-p\right)^x$ &  \code{dnbinom($x$, size = $n$, prob = $p$)} %& \multirow{2}{*}{\scriptsize{$\leftrightarrow$}}
-& size (\code{n}) is continuous     \\ %\addlinespace
+& size (\code{n}) is continuous   \\ 
 %&  R$^*$      &  $\frac{\Gamma(k+x)}{\Gamma(k)x!}(\frac{k}{k+\mu})^k \frac{\mu}{(k+\mu)^x}$     &  \code{dnbinom(x, size = $n$, mu = $\mu$)} & \\%$\mu=n(1-p)/p$  \\
-&  BUGS   &  ${x+r-1 \choose x}p^r\left(1-p\right)^x$ &  \code{dnegbin(prob = $p$, size = $r$)}     & size (\code{r}) is discrete  \\ 
+&  BUGS   &  ${x+r-1 \choose x}p^r\left(1-p\right)^x$ &  \code{dnegbin(prob = $p$, size = $r$)}$^*$     & size (\code{r}) is discrete  \\ 
 \midrule
 \multirow{2}{*}{Weibull}
 &  R      &  $\frac{a}{b} (\frac{x}{b})^{a-1} \exp\left(- \left(\frac{x}{b}\right)^a\right)$                      &  \code{dweibull($x$, shape = $a$, scale = $b$)} & \\ %\addlinespace
